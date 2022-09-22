@@ -1,0 +1,2 @@
+(ekran "Merhaba, Dünya!" yazsın)
+
