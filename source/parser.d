@@ -114,7 +114,7 @@ enum TokenType {
    Identifier,
    Symbol,
    StringLiteral,
-   ValueKeyPair,
+   Pair,
    NumberLiteral,
    Expression,
    Block,
@@ -137,59 +137,31 @@ union TokenData {
    Token[] list;
 }
 
+template tokenConstructor(string type, string inType) {
+   string tokenConstructor() {
+      string Type = type[0].toUpper.to!string ~ type[1..$];
+      return "static Token " ~ type ~ "(" ~ inType ~ " val) {" ~
+      "auto ret = new Token;" ~
+      "ret.type = TokenType." ~ Type ~ ";" ~
+      "ret.data." ~ type ~ " = val;" ~
+      "return ret;}";
+   }
+}
+
 public class Token {
    TokenType type;
    TokenData data;
 
    this() {}
-   static Token identifier(dstring str) {
-      auto ret = new Token();
-      ret.type = TokenType.Identifier;
-      ret.data.identifier = str;
-      return ret;
-   }
-   static Token symbol(dstring str) {
-      auto ret = new Token();
-      ret.type = TokenType.Symbol;
-      ret.data.symbol = str;
-      return ret;
-   }
-   static Token stringLiteral(dstring str) {
-      auto ret = new Token();
-      ret.type = TokenType.StringLiteral;
-      ret.data.stringLiteral = str;
-      return ret;
-   }
-   static Token numberLiteral(real num) {
-      auto ret = new Token();
-      ret.type = TokenType.NumberLiteral;
-      ret.data.numberLiteral = num;
-      return ret;
-   }
-   static Token pair(Token value, Token key) {
-      auto ret = new Token();
-      ret.type = TokenType.ValueKeyPair;
-      ret.data.pair = ValueKeyPairData(value, key);
-      return ret;
-   }
-   static Token expression(Token[] expr) {
-      auto ret = new Token();
-      ret.type = TokenType.Expression;
-      ret.data.expression = expr;
-      return ret;
-   }
-   static Token block(Token[] blok) {
-      auto ret = new Token();
-      ret.type = TokenType.Block;
-      ret.data.block = blok;
-      return ret;
-   }
-   static Token list(Token[] lst) {
-      auto ret = new Token();
-      ret.type = TokenType.List;
-      ret.data.list = lst;
-      return ret;
-   }
+   mixin(tokenConstructor!("identifier", "dstring"));
+   mixin(tokenConstructor!("symbol", "dstring"));
+   mixin(tokenConstructor!("stringLiteral", "dstring"));
+   mixin(tokenConstructor!("numberLiteral", "real"));
+   mixin(tokenConstructor!("pair", "ValueKeyPairData"));
+   mixin(tokenConstructor!("expression", "Token[]"));
+   mixin(tokenConstructor!("block", "Token[]"));
+   mixin(tokenConstructor!("list", "Token[]"));
+
    override string toString() {
       switch(this.type) {
          case TokenType.Identifier:
@@ -200,8 +172,8 @@ public class Token {
             return '\n' ~ ("\x1b[33mStringLiteral(\"" ~ this.data.stringLiteral ~ "\")\x1b[0m").to!string;
          case TokenType.NumberLiteral:
             return '\n' ~ ("\x1b[34mNumberLiteral(" ~ this.data.numberLiteral.to!string ~ ")\x1b[0m").to!string;
-         case TokenType.ValueKeyPair:
-            return '\n' ~ ("\x1b[35mValueKeyPair(" ~ this.data.pair.value.to!string ~ ":" ~ this.data.pair.key.to!string ~ ")\x1b[0m").to!string;
+         case TokenType.Pair:
+            return '\n' ~ ("\x1b[35mPair(" ~ this.data.pair.value.to!string ~ ":" ~ this.data.pair.key.to!string ~ ")\x1b[0m").to!string;
          case TokenType.Expression:
             return '\n' ~ ("\x1b[36mExpression{" ~ this.data.expression.to!string ~ "\x1b[36m}\x1b[0m").to!string;
          case TokenType.Block:
@@ -237,7 +209,7 @@ Token[] parseKut(const dstring toBeParsed) {
          key = ret[$-1];
          ret.popBack;
          ret.popBack;
-         ret ~= Token.pair(value, key);
+         ret ~= Token.pair(ValueKeyPairData(value, key));
          key = null;
          value = null;
          isInValueKeyPair = false;
