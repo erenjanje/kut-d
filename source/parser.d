@@ -109,7 +109,7 @@ dstring identifierSlice(const dstring self, const dchar noEvalChar = '\'', dchar
    return self[];
 }
 
-enum TokenType {
+public enum TokenType {
    Invalid,
    Identifier,
    Symbol,
@@ -121,12 +121,12 @@ enum TokenType {
    List,
 }
 
-struct ValueKeyPairData {
+public struct ValueKeyPairData {
    Token value;
    Token key;
 }
 
-union TokenData {
+public union TokenData {
    dstring identifier;
    dstring symbol;
    dstring stringLiteral;
