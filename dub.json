@@ -1,0 +1,9 @@
+{
+	"authors": [
+		"Erencan CEYHAN"
+	],
+	"copyright": "Copyright © 2022, Erencan CEYHAN",
+	"description": "An embeddable object oriented langauge with postfix syntax implemented in D language.",
+	"license": "proprietary",
+	"name": "kut"
+}
