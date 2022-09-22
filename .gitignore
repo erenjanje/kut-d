@@ -13,6 +13,8 @@
 
 # Executables
 *.exe
+kut
+kut-test-library
 
 # DUB
 .dub
