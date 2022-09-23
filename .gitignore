@@ -27,3 +27,6 @@ docs/
 
 # CTags
 .tags*
+
+# Test files
+deneme.txt
