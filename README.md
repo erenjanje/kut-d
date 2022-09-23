@@ -1,5 +1,7 @@
-# kut
+# Kut
 The main Kut Language Interpreter repository (Kut Dili Yorumlayıcısı ana deposu)
+
+For more information, refer to the [wiki](https://github.com/erencan-c/kut/wiki)
 
 # Examples
 
