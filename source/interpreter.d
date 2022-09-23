@@ -7,7 +7,7 @@ import kut.parser : parseKut, Token, TokenType;
 
 enum KutType {
    Undefined,
-   Null,
+   Nil,
    Symbol,
    String_,
    Pair,
@@ -18,11 +18,9 @@ enum KutType {
    ExternalObject,
 }
 
-
-
 class KutList {
    KutObject[] sequential;
-   KutObject[KutObject] pairs;
+   KutObject[dstring] pairs;
 }
 
 union KutData {
@@ -31,7 +29,7 @@ union KutData {
    dstring string_;
    KutDataPair pair;
    Token block;
-   KutObject[] list;
+   KutList list;
    // NotYetImplemented object;
    ExternalKutObject externalObject;
 }
@@ -52,6 +50,40 @@ struct KutDataPair {
    dstring key;
 }
 
+template isTypeConstructor(string type) {
+   string isTypeConstructor() {
+      string Type = type[0].toUpper.to!string ~ type[1..$];
+      return "bool is" ~ Type ~ "() {" ~
+         "return this.type == KutType." ~ Type ~ ";}";
+   }
+}
+
+KutObject getValue(dstring key, ref KutObject[dstring] immutableVariables, ref KutObject[dstring] variables) {
+   if(key in immutableVariables) {
+      return immutableVariables[key];
+   } else if(key in variables) {
+      return variables[key];
+   } else {
+      return KutObject.undefined;
+   }
+}
+
+KutObject getImmutableValue(dstring key, ref KutObject[dstring] immutableVariables) {
+   if(key in immutableVariables) {
+      return immutableVariables[key];
+   } else {
+      return KutObject.undefined;
+   }
+}
+
+KutObject getVariableValue(dstring key, ref KutObject[dstring] variables) {
+   if(key in variables) {
+      return variables[key];
+   } else {
+      return KutObject.undefined;
+   }
+}
+
 public class KutObject {
    KutType type;
    KutData data;
@@ -63,7 +95,7 @@ public class KutObject {
    }
    static KutObject nil() {
       auto ret = new KutObject();
-      ret.type = KutType.Null;
+      ret.type = KutType.Nil;
       return ret;
    }
    mixin(kutObjectConstructor!("symbol", "dstring"));
@@ -76,13 +108,25 @@ public class KutObject {
       return ret;
    }
    mixin(kutObjectConstructor!("block", "Token"));
+   mixin(kutObjectConstructor!("list", "KutList"));
    mixin(kutObjectConstructor!("externalObject", "ExternalKutObject"));
+
+   mixin(isTypeConstructor!("undefined"));
+   mixin(isTypeConstructor!("nil"));
+   mixin(isTypeConstructor!("symbol"));
+   mixin(isTypeConstructor!("number"));
+   mixin(isTypeConstructor!("string_"));
+   mixin(isTypeConstructor!("pair"));
+   mixin(isTypeConstructor!("block"));
+   mixin(isTypeConstructor!("list"));
+   mixin(isTypeConstructor!("object"));
+   mixin(isTypeConstructor!("externalObject"));
 
    override string toString() {
       final switch(this.type) {
          case KutType.Undefined:
             return "undefined";
-         case KutType.Null:
+         case KutType.Nil:
             return "nil";
          case KutType.Symbol:
             return "Symbol(" ~ this.data.symbol.to!string ~ ")";
@@ -107,13 +151,13 @@ public class KutObject {
       dstring method,
       KutObject[] args,
       KutObject[dstring] kwargs,
-      const KutObject[dstring] immutableVariables,
+      ref KutObject[dstring] immutableVariables,
       ref KutObject[dstring] variables
    ) {
       final switch(this.type) {
          case KutType.Undefined:
             return KutObject.undefined;
-         case KutType.Null:
+         case KutType.Nil:
             return KutObject.nil;
          case KutType.Symbol:
             if(method in symbolMethods) {
@@ -132,9 +176,17 @@ public class KutObject {
                return KutObject.undefined;
             }
          case KutType.Block:
-            return KutObject.undefined;
+            if(method in blockMethods) {
+               return blockMethods[method](this, args, kwargs, immutableVariables, variables);
+            } else {
+               return KutObject.undefined;
+            }
          case KutType.List:
-            return KutObject.undefined;
+            if(method in listMethods) {
+               return listMethods[method](this, args, kwargs, immutableVariables, variables);
+            } else {
+               return KutObject.undefined;
+            }
          case KutType.Object:
             return KutObject.undefined;
          case KutType.ExternalObject:
@@ -146,10 +198,11 @@ public class KutObject {
 alias KutDispatchedMethodType = KutObject function(KutObject self,
    KutObject[] args,
    KutObject[dstring] kwargs,
-   const KutObject[dstring] immutableVariables,
+   ref KutObject[dstring] immutableVariables,
    ref KutObject[dstring] variables
 );
 
+KutDispatchedMethodType[dstring] undefinedMethods = null;
 KutDispatchedMethodType[dstring] symbolMethods = null;
 KutDispatchedMethodType[dstring] stringMethods = null;
 KutDispatchedMethodType[dstring] pairMethods = null;
@@ -158,10 +211,16 @@ KutDispatchedMethodType[dstring] blockMethods = null;
 KutDispatchedMethodType[dstring] listMethods = null;
 
 void constructMethods() {
+   import kut.undefined : getUndefinedMethods;
    import kut.symbol : getSymbolMethods;
    import kut.number : getNumberMethods;
+   import kut.list : getListMethods;
+   import kut.block : getBlockMethods;
+   undefinedMethods = getUndefinedMethods();
    symbolMethods = getSymbolMethods();
    numberMethods = getNumberMethods();
+   listMethods = getListMethods();
+   blockMethods = getBlockMethods();
 };
 
 class ExternalKutObject {
@@ -170,83 +229,82 @@ public:
       dstring method,
       KutObject[] args,
       KutObject[dstring] kwargs,
-      const KutObject[dstring] immutableVariables,
+      KutObject[dstring] immutableVariables,
       ref KutObject[dstring] variables
    );
 }
 
-class KutContext {
-private:
-   KutObject eval(Token token) {
-      KutObject[] args;
-      KutObject[dstring] kwargs;
-      switch(token.type) {
-         case TokenType.Identifier:
-            dstring identifier = token.data.identifier;
-            if(identifier in this.immutableVariables) {
-               return this.immutableVariables[identifier];
-            } else if(identifier in this.variables) {
-               return this.variables[identifier];
-            } else {
-               return KutObject.undefined;
-            }
-         case TokenType.Symbol:
-            return KutObject.symbol(token.data.symbol);
-         case TokenType.StringLiteral:
-            return KutObject.string_(token.data.stringLiteral);
-         case TokenType.Pair:
-            if(token.data.pair.key.type != TokenType.StringLiteral && token.data.pair.key.type != TokenType.Identifier) {
-               throw new Error("Pair keys can only be strings or literals!");
-            }
-            if(token.data.pair.key.type == TokenType.StringLiteral)
-               return KutObject.pair(KutDataPair(this.eval(token.data.pair.value), token.data.pair.key.data.stringLiteral));
-            return KutObject.pair(KutDataPair(this.eval(token.data.pair.value), token.data.pair.key.data.identifier));
-         case TokenType.NumberLiteral:
-            return KutObject.number(token.data.numberLiteral.to!double);
-         case TokenType.Expression:
-            Token subjectToken = token.data.expression[0];
-            Token verbToken = token.data.expression[$-1];
-            KutObject subject = this.eval(subjectToken);
-            if(verbToken.type != TokenType.StringLiteral && verbToken.type != TokenType.Identifier) {
-               throw new Error("Method names can only be strings or identifiers!");
-            }
-            dstring verb = (verbToken.type == TokenType.Identifier) ? (verbToken.data.identifier) : (verbToken.data.stringLiteral);
-            foreach(Token exprToken; token.data.expression[1..$-1]) {
-               KutObject innerObject = this.eval(exprToken);
-               if(innerObject.type == KutType.Pair) {
-                  kwargs[innerObject.data.pair.key] = innerObject.data.pair.value;
-               } else {
-                  args ~= innerObject;
-               }
-            }
-            return subject.methodCall(verb, args, kwargs, this.immutableVariables, this.variables);
-         case TokenType.Block:
-            return KutObject.block(token);
-         case TokenType.List:
-            return KutObject.undefined;
-         default:
-            return KutObject.undefined;
-      }
-   }
-public:
-   KutObject[dstring] immutableVariables;
-   KutObject[dstring] variables;
-   this(KutObject[dstring] immutableVars, KutObject[dstring] vars) {
-      this.immutableVariables = immutableVars;
-      this.variables = vars;
-   }
-   void evaluate(Token[] tokens) {
-      if(symbolMethods == null) {
-         constructMethods();
-      }
-      for(size_t i = 0; i < tokens.length; i++) {
-         switch(tokens[i].type) {
-            case TokenType.Expression:
-               this.eval(tokens[i]);
-            break;
-            default:
-               throw new Error("Top declarations must be all expressions!");
+public KutObject eval(Token token, ref KutObject[dstring] immutableVariables, ref KutObject[dstring] variables) {
+   KutObject[] args;
+   KutObject[dstring] kwargs;
+   switch(token.type) {
+      case TokenType.Identifier:
+         dstring identifier = token.data.identifier;
+         return identifier.getValue(immutableVariables, variables);
+      case TokenType.Symbol:
+         return KutObject.symbol(token.data.symbol);
+      case TokenType.StringLiteral:
+         return KutObject.string_(token.data.stringLiteral);
+      case TokenType.Pair:
+         if(token.data.pair.key.type != TokenType.StringLiteral && token.data.pair.key.type != TokenType.Identifier) {
+            throw new Error("Pair keys can only be strings or literals!");
          }
+         if(token.data.pair.key.type == TokenType.StringLiteral) {
+            return KutObject.pair(KutDataPair(token.data.pair.value.eval(immutableVariables, variables), token.data.pair.key.data.stringLiteral));
+         }
+         return KutObject.pair(KutDataPair(token.data.pair.value.eval(immutableVariables, variables), token.data.pair.key.data.identifier));
+      case TokenType.NumberLiteral:
+         return KutObject.number(token.data.numberLiteral.to!double);
+      case TokenType.Expression:
+         if(token.data.expression.length == 0) {
+            return KutObject.undefined;
+         } else if(token.data.expression.length == 1) {
+            return token.data.expression[0].eval(immutableVariables, variables);
+         }
+         Token subjectToken = token.data.expression[0];
+         Token verbToken = token.data.expression[$-1];
+         KutObject subject = subjectToken.eval(immutableVariables, variables);
+         if(verbToken.type != TokenType.StringLiteral && verbToken.type != TokenType.Identifier) {
+            throw new Error("Method names can only be strings or identifiers!");
+         }
+         dstring verb = (verbToken.type == TokenType.Identifier) ? (verbToken.data.identifier) : (verbToken.data.stringLiteral);
+         foreach(Token exprToken; token.data.expression[1..$-1]) {
+            KutObject innerObject = exprToken.eval(immutableVariables, variables);
+            if(innerObject.type == KutType.Pair) {
+               kwargs[innerObject.data.pair.key] = innerObject.data.pair.value;
+            } else {
+               args ~= innerObject;
+            }
+         }
+         return subject.methodCall(verb, args, kwargs, immutableVariables, variables);
+      case TokenType.Block:
+         return KutObject.block(token);
+      case TokenType.List:
+         auto list = new KutList();
+         foreach(Token listToken; token.data.list) {
+            KutObject innerObject = listToken.eval(immutableVariables, variables);
+            if(innerObject.isPair) {
+               list.pairs[innerObject.data.pair.key] = innerObject.data.pair.value;
+            } else {
+               list.sequential ~= innerObject;
+            }
+         }
+         return KutObject.list(list);
+      default:
+         return KutObject.undefined;
+   }
+}
+public void evaluate(Token[] tokens, ref KutObject[dstring] immutableVariables, ref KutObject[dstring] variables) {
+   if(symbolMethods == null) {
+      constructMethods();
+   }
+   for(size_t i = 0; i < tokens.length; i++) {
+      switch(tokens[i].type) {
+         case TokenType.Expression:
+            tokens[i].eval(immutableVariables, variables);
+         break;
+         default:
+            throw new Error("Top declarations must be all expressions!");
       }
    }
 }

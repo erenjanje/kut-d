@@ -82,7 +82,7 @@ dstring matchingQuotesSlice(const dstring self, const dchar quoteChar = '\"', co
 }
 
 alias excludedCharacters = Alias!([
-  '#', ':', '\"', '\'', '(', ')', '[', ']', '{', '}',
+  '#', '$', ':', '\"', '\'', '(', ')', '[', ']', '{', '}',
 ]);
 
 private bool isExcluded(dchar c, dchar[] excludeds = excludedCharacters) {
@@ -119,6 +119,7 @@ public enum TokenType {
    Expression,
    Block,
    List,
+   PairPlaceholder,
 }
 
 public struct ValueKeyPairData {
@@ -161,6 +162,11 @@ public class Token {
    mixin(tokenConstructor!("expression", "Token[]"));
    mixin(tokenConstructor!("block", "Token[]"));
    mixin(tokenConstructor!("list", "Token[]"));
+   static Token pairPlaceholder() {
+      auto ret = new Token;
+      ret.type = TokenType.PairPlaceholder;
+      return ret;
+   }
 
    override string toString() {
       switch(this.type) {
@@ -180,6 +186,8 @@ public class Token {
             return '\n' ~ ("\x1b[37mBlock{" ~ this.data.block.to!string ~ "\x1b[37m}\x1b[0m").to!string;
          case TokenType.List:
             return '\n' ~ ("\x1b[0mList{" ~ this.data.list.to!string ~ "}\x1b[0m").to!string;
+         case TokenType.PairPlaceholder:
+            return '\n' ~ "(PairPlaceholder)";
          default:
             return "";
       }
@@ -201,26 +209,12 @@ template parseBalanced(dchar open, dchar close, alias kind) {
 Token[] parseKut(const dstring toBeParsed) {
    Token[] ret = [];
    const dstring self = to!(const dstring)(toBeParsed);
-   bool isInValueKeyPair = false;
-   Token key = null, value = null;
    for(size_t i = 0; i < self.length; i++) {
       dchar character = self[i];
-      if(value && isInValueKeyPair) {
-         key = ret[$-1];
-         ret.popBack;
-         ret.popBack;
-         ret ~= Token.pair(ValueKeyPairData(value, key));
-         key = null;
-         value = null;
-         isInValueKeyPair = false;
-      }
-      if(value && !isInValueKeyPair) {
-         isInValueKeyPair = true;
-      }
       if(character.isWhite) {
          continue; /* Cannot be a token, so prevent key-value pair creation from this */
       } else if(character == ':') { /* Value:Key seperator */
-         value = ret[$-1];
+         ret ~= Token.pairPlaceholder;
       } else if(character == '#') { /* A comment */
          if(self[i+1] == '[') { /* A block comment */
             size_t[2] between = self[i..$].matching('[', ']');
@@ -236,7 +230,7 @@ Token[] parseKut(const dstring toBeParsed) {
       } else if(character.isNumber) { /* Number literal */
          dstring num = self[i..$].until!isBoundary.to!dstring;
          ret ~= Token.numberLiteral(num.to!real);
-         i += num.length;
+         i += num.length - 1;
       } else if(character == '(') { /* Expression */
          parseBalanced!('(', ')', "expression")(self, i, ret);
       } else if(character == '[') { /* Block */
@@ -257,6 +251,14 @@ Token[] parseKut(const dstring toBeParsed) {
             ret ~= Token.identifier(identifier);
          }
          i += identifier.length-1;
+      }
+      if(ret.length >= 3 && ret[$-2].type == TokenType.PairPlaceholder) {
+         Token val = ret[$-3];
+         Token key = ret[$-1];
+         ret.popBack();
+         ret.popBack();
+         ret.popBack();
+         ret ~= Token.pair(ValueKeyPairData(val, key));
       }
    }
    return ret;

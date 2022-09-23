@@ -9,7 +9,7 @@ private:
    KutObject write(KutObject self,
       KutObject[] args,
       KutObject[dstring] kwargs,
-      const KutObject[dstring] immutableVariables,
+      KutObject[dstring] immutableVariables,
       ref KutObject[dstring] variables
    ) {
       KutObject arg = args[0];
@@ -29,7 +29,7 @@ public:
       dstring method,
       KutObject[] args,
       KutObject[dstring] kwargs,
-      const KutObject[dstring] immutableVariables,
+      KutObject[dstring] immutableVariables,
       ref KutObject[dstring] variables
    ) {
       switch(method) {

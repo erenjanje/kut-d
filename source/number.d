@@ -6,7 +6,7 @@ import std.conv : to;
 KutObject numberPlusMethod(KutObject self,
    KutObject[] args,
    KutObject[dstring] kwargs,
-   const KutObject[dstring] immutableVariables,
+   ref KutObject[dstring] immutableVariables,
    ref KutObject[dstring] variables
 ) {
    double num = self.data.number;
@@ -20,7 +20,7 @@ KutObject numberPlusMethod(KutObject self,
 KutObject numberMinusMethod(KutObject self,
    KutObject[] args,
    KutObject[dstring] kwargs,
-   const KutObject[dstring] immutableVariables,
+   ref KutObject[dstring] immutableVariables,
    ref KutObject[dstring] variables
 ) {
    double num = self.data.number;
@@ -34,7 +34,7 @@ KutObject numberMinusMethod(KutObject self,
 KutObject numberMultiplyMethod(KutObject self,
    KutObject[] args,
    KutObject[dstring] kwargs,
-   const KutObject[dstring] immutableVariables,
+   ref KutObject[dstring] immutableVariables,
    ref KutObject[dstring] variables
 ) {
    double num = self.data.number;
@@ -48,7 +48,7 @@ KutObject numberMultiplyMethod(KutObject self,
 KutObject numberDivideMethod(KutObject self,
    KutObject[] args,
    KutObject[dstring] kwargs,
-   const KutObject[dstring] immutableVariables,
+   ref KutObject[dstring] immutableVariables,
    ref KutObject[dstring] variables
 ) {
    double num = self.data.number;
@@ -62,7 +62,7 @@ KutObject numberDivideMethod(KutObject self,
 KutObject numberExponentMethod(KutObject self,
    KutObject[] args,
    KutObject[dstring] kwargs,
-   const KutObject[dstring] immutableVariables,
+   ref KutObject[dstring] immutableVariables,
    ref KutObject[dstring] variables
 ) {
    double num = self.data.number;
@@ -76,7 +76,7 @@ KutObject numberExponentMethod(KutObject self,
 KutObject numberStringifyMethod(KutObject self,
    KutObject[] args,
    KutObject[dstring] kwargs,
-   const KutObject[dstring] immutableVariables,
+   ref KutObject[dstring] immutableVariables,
    ref KutObject[dstring] variables
 ) {
    double num = self.data.number;
