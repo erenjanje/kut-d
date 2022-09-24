@@ -11,7 +11,7 @@ KutObject undefinedStringifyMethod(KutObject self,
    ref KutObject[dstring] immutableVariables,
    ref KutObject[dstring] variables
 ) {
-   return KutObject.string_("undefined".to!dstring);
+   return KutObject.string_("tanımsız".to!dstring);
 }
 
 KutDispatchedMethodType[dstring] getUndefinedMethods() {

@@ -12,6 +12,7 @@ enum KutType {
    String_,
    Pair,
    Number,
+   Boolean,
    Block,
    List,
    Object,
@@ -28,6 +29,7 @@ union KutData {
    double number;
    dstring string_;
    KutDataPair pair;
+   bool boolean;
    Token block;
    KutList list;
    // NotYetImplemented object;
@@ -107,6 +109,7 @@ public class KutObject {
       ret.data.pair = pair;
       return ret;
    }
+   mixin(kutObjectConstructor!("boolean", "bool"));
    mixin(kutObjectConstructor!("block", "Token"));
    mixin(kutObjectConstructor!("list", "KutList"));
    mixin(kutObjectConstructor!("externalObject", "ExternalKutObject"));
@@ -117,6 +120,7 @@ public class KutObject {
    mixin(isTypeConstructor!("number"));
    mixin(isTypeConstructor!("string_"));
    mixin(isTypeConstructor!("pair"));
+   mixin(isTypeConstructor!("boolean"));
    mixin(isTypeConstructor!("block"));
    mixin(isTypeConstructor!("list"));
    mixin(isTypeConstructor!("object"));
@@ -136,6 +140,8 @@ public class KutObject {
             return "Pair(" ~ this.data.pair.value.to!string ~ ":" ~ this.data.pair.key.to!string ~ ")";
          case KutType.Number:
             return "Number(" ~ this.data.number.to!string ~ ")";
+         case KutType.Boolean:
+            return "Bool(" ~ this.data.boolean.to!string ~ ")";
          case KutType.Block:
             return "";
          case KutType.List:
@@ -156,7 +162,11 @@ public class KutObject {
    ) {
       final switch(this.type) {
          case KutType.Undefined:
-            return KutObject.undefined;
+            if(method in undefinedMethods) {
+               return undefinedMethods[method](this, args, kwargs, immutableVariables, variables);
+            } else {
+               return KutObject.undefined;
+            }
          case KutType.Nil:
             return KutObject.nil;
          case KutType.Symbol:
@@ -172,6 +182,12 @@ public class KutObject {
          case KutType.Number:
             if(method in numberMethods) {
                return numberMethods[method](this, args, kwargs, immutableVariables, variables);
+            } else {
+               return KutObject.undefined;
+            }
+         case KutType.Boolean:
+            if(method in booleanMethods) {
+               return booleanMethods[method](this, args, kwargs, immutableVariables, variables);
             } else {
                return KutObject.undefined;
             }
@@ -207,6 +223,7 @@ KutDispatchedMethodType[dstring] symbolMethods = null;
 KutDispatchedMethodType[dstring] stringMethods = null;
 KutDispatchedMethodType[dstring] pairMethods = null;
 KutDispatchedMethodType[dstring] numberMethods = null;
+KutDispatchedMethodType[dstring] booleanMethods = null;
 KutDispatchedMethodType[dstring] blockMethods = null;
 KutDispatchedMethodType[dstring] listMethods = null;
 
@@ -214,11 +231,13 @@ void constructMethods() {
    import kut.undefined : getUndefinedMethods;
    import kut.symbol : getSymbolMethods;
    import kut.number : getNumberMethods;
+   import kut.boolean : getBooleanMethods;
    import kut.list : getListMethods;
    import kut.block : getBlockMethods;
    undefinedMethods = getUndefinedMethods();
    symbolMethods = getSymbolMethods();
    numberMethods = getNumberMethods();
+   booleanMethods = getBooleanMethods();
    listMethods = getListMethods();
    blockMethods = getBlockMethods();
 };
