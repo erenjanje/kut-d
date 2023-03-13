@@ -1,7 +1,8 @@
 # Kut
-The main Kut Language Interpreter repository (Kut Dili Yorumlayıcısı ana deposu)
 
-For more information, refer to the [wiki](https://github.com/erencan-c/kut/wiki).
+Kut language D interpreter
+
+IMPORTANT: Main development (on C) is [here](https://github.com/erenjanje/kut)
 
 # Examples
 
